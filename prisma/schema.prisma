@@ -1,0 +1,189 @@
+// Prisma schema for Paris Decoration
+// Neon PostgreSQL connection configuration
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum GalleryStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+enum TestimonialStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  services    Service[]
+  galleries   Gallery[]
+
+  @@map("categories")
+}
+
+model Service {
+  id          String         @id @default(cuid())
+  categoryId  String
+  category    Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name        String
+  slug        String         @unique
+  description String
+  price       Decimal        @db.Decimal(12, 2)
+  facilities  String?
+  status      ServiceStatus  @default(ACTIVE)
+  images      ServiceImage[]
+  orderItems  OrderItem[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+  @@map("services")
+}
+
+model ServiceImage {
+  id          String   @id @default(cuid())
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  fileName    String
+  driveFileId String?
+  driveUrl    String
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([serviceId])
+  @@map("service_images")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderCode     String      @unique
+  customerName  String
+  phone         String
+  email         String?
+  eventDate     DateTime
+  eventLocation String
+  notes         String?
+  totalPrice    Decimal     @db.Decimal(12, 2)
+  status        OrderStatus @default(PENDING)
+  items         OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([status])
+  @@index([eventDate])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceName String
+  quantity    Int      @default(1)
+  price       Decimal  @db.Decimal(12, 2)
+  subtotal    Decimal  @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@index([serviceId])
+  @@map("order_items")
+}
+
+model Gallery {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  categoryId  String?
+  category    Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  driveFileId String?
+  driveUrl    String
+  status      GalleryStatus @default(PUBLISHED)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+  @@map("galleries")
+}
+
+model Testimonial {
+  id           String            @id @default(cuid())
+  customerName String
+  rating       Int               @default(5)
+  message      String
+  eventType    String?
+  image        String?
+  status       TestimonialStatus @default(PUBLISHED)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([status])
+  @@map("testimonials")
+}
+
+model SiteSetting {
+  id                String   @id @default("default")
+  siteName          String   @default("Paris Decoration")
+  tagline           String?  @default("Create Beautiful Moments")
+  description       String?
+  phone             String?  @default("085943610397")
+  whatsapp          String?  @default("6285943610397")
+  email             String?  @default("contact@parisdecoration.com")
+  instagram         String?  @default("@parisdecoration")
+  address           String?  @default("Sumenep, Madura, Jawa Timur")
+  logo              String?
+  heroTitle         String?  @default("Create Beautiful Moments")
+  heroDescription   String?  @default("Jadikan setiap momen istimewa dengan sentuhan dekorasi yang elegan, berkelas, dan penuh kehangatan.")
+  heroImage         String?
+  footerDescription String?  @default("Paris Decoration hadir mewujudkan konsep dekorasi pernikahan, lamaran, ulang tahun, dan berbagai momen berharga dengan keindahan tak terlupakan.")
+  updatedAt         DateTime @updatedAt
+
+  @@map("site_settings")
+}
